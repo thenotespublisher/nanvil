@@ -12,7 +12,6 @@ let deployedContractsCache = { height: -1, list: [] };
 let renderGen = 0;
 const viewRefreshTimers = new Map();
 const appLogCache = new Map();
-const activityBatch = { blocks: 0, txs: 0, timer: null };
 let lastBlockToastAt = 0;
 let ws = null;
 let wsReqId = 1;
@@ -22,6 +21,8 @@ const MAX_ACTIVITY = 30;
 const contractNameCache = new Map();
 const contractManifestCache = new Map();
 let gasTokenHash = null;
+let lastPrependedBlockIndex = -1;
+let managementContractHash = null;
 
 // ── RPC helpers ──────────────────────────────────────────────
 
@@ -115,29 +116,84 @@ function blockHref(id, txPage) {
   return txPage > 0 ? `#/block/${id}/p/${txPage}` : `#/block/${id}`;
 }
 
-function pagerHtml({ page, pageCount, range, hasOlder, hasNewer, olderHref, newerHref }) {
-  const meta = [
+function pagerMetaText({ page, pageCount, range }) {
+  return [
     `Page ${page + 1}`,
     pageCount ? `of ${pageCount}` : '',
     range ? `· ${range}` : '',
   ].filter(Boolean).join(' ');
+}
+
+function pagerHtml({ page, pageCount, range, hasOlder, hasNewer, hrefForPage }) {
+  const canFirst = page > 0;
+  const canLast = pageCount != null && pageCount > 0 && page < pageCount - 1;
+  const meta = pagerMetaText({ page, pageCount, range });
   return `
-    <div class="pager">
-      <button class="pager-older" ${!hasOlder ? 'disabled' : ''} data-href="${esc(olderHref || '')}">← Older</button>
+    <div class="pager"${pageCount != null ? ` data-page-count="${pageCount}"` : ''}>
+      <div class="pager-controls">
+        <button type="button" class="pager-first" ${!canFirst ? 'disabled' : ''} data-href="${esc(hrefForPage(0))}">« First</button>
+        <button type="button" class="pager-newer" ${!hasNewer ? 'disabled' : ''} data-href="${esc(hasNewer ? hrefForPage(page - 1) : '')}">Newer →</button>
+        <button type="button" class="pager-older" ${!hasOlder ? 'disabled' : ''} data-href="${esc(hasOlder ? hrefForPage(page + 1) : '')}">← Older</button>
+        <button type="button" class="pager-last" ${!canLast ? 'disabled' : ''} data-href="${esc(canLast ? hrefForPage(pageCount - 1) : '')}">Last »</button>
+      </div>
       <span class="pager-meta">${meta}</span>
-      <button class="pager-newer" ${!hasNewer ? 'disabled' : ''} data-href="${esc(newerHref || '')}">Newer →</button>
+      <form class="pager-goto">
+        <label class="pager-goto-label">Go to</label>
+        <input class="pager-goto-input" type="number" min="1"${pageCount ? ` max="${pageCount}"` : ''} value="${page + 1}" aria-label="Page number" />
+        <button type="submit" class="pager-goto-btn">Go</button>
+      </form>
     </div>`;
 }
 
-function bindPager(root) {
-  if (!root) return;
-  root.querySelector('.pager-older')?.addEventListener('click', e => {
-    const href = e.currentTarget.dataset.href;
-    if (href) location.hash = href;
+function syncPager(pager, { page, pageCount, range, hasOlder, hasNewer, hrefForPage }) {
+  if (!pager || typeof hrefForPage !== 'function') return;
+  const canFirst = page > 0;
+  const canLast = pageCount != null && pageCount > 0 && page < pageCount - 1;
+  if (pageCount != null) pager.dataset.pageCount = String(pageCount);
+  else delete pager.dataset.pageCount;
+
+  const meta = pager.querySelector('.pager-meta');
+  if (meta) meta.textContent = pagerMetaText({ page, pageCount, range });
+
+  const setBtn = (selector, enabled, href) => {
+    const btn = pager.querySelector(selector);
+    if (!btn) return;
+    btn.disabled = !enabled;
+    btn.dataset.href = enabled ? href : '';
+  };
+  setBtn('.pager-first', canFirst, hrefForPage(0));
+  setBtn('.pager-newer', hasNewer, hasNewer ? hrefForPage(page - 1) : '');
+  setBtn('.pager-older', hasOlder, hasOlder ? hrefForPage(page + 1) : '');
+  setBtn('.pager-last', canLast, canLast ? hrefForPage(pageCount - 1) : '');
+
+  const input = pager.querySelector('.pager-goto-input');
+  if (input) {
+    input.value = String(page + 1);
+    if (pageCount) input.max = String(pageCount);
+    else input.removeAttribute('max');
+  }
+}
+
+function bindPager(root, hrefForPage) {
+  const pager = root?.querySelector?.('.pager') || (root?.classList?.contains('pager') ? root : null);
+  if (!pager || typeof hrefForPage !== 'function') return;
+
+  pager.querySelectorAll('.pager-first, .pager-newer, .pager-older, .pager-last').forEach(btn => {
+    btn.addEventListener('click', e => {
+      const href = e.currentTarget.dataset.href;
+      if (href && !e.currentTarget.disabled) location.hash = href;
+    });
   });
-  root.querySelector('.pager-newer')?.addEventListener('click', e => {
-    const href = e.currentTarget.dataset.href;
-    if (href) location.hash = href;
+
+  const form = pager.querySelector('.pager-goto');
+  const input = pager.querySelector('.pager-goto-input');
+  form?.addEventListener('submit', e => {
+    e.preventDefault();
+    let n = parseInt(input.value, 10);
+    if (!Number.isFinite(n) || n < 1) return;
+    const pageCount = pager.dataset.pageCount ? parseInt(pager.dataset.pageCount, 10) : null;
+    if (pageCount) n = Math.min(n, pageCount);
+    location.hash = hrefForPage(n - 1);
   });
 }
 
@@ -684,33 +740,63 @@ function showToast(msg, kind = 'info') {
   }, 2800);
 }
 
-function addActivity(kind, message) {
-  activityLog.unshift({ time: new Date(), kind, message });
+function activityTxHref(hash) {
+  const h = normalizeTxHash(hash) || normalizeHash(hash);
+  return h ? `#/tx/${h}` : null;
+}
+
+function activityItemHtml(entry, isNew = false) {
+  const cls = `act-${entry.kind.toLowerCase()}${isNew ? ' act-new' : ''}`;
+  const hrefAttr = entry.href ? ` data-href="${esc(entry.href)}"` : '';
+  const content = entry.href
+    ? `<a class="act-link" href="${esc(entry.href)}">${esc(entry.message)}</a>`
+    : esc(entry.message);
+  return `<li class="${cls}"${hrefAttr}><span class="act-time">${entry.time.toLocaleTimeString()}</span> <span class="act-kind">${entry.kind}</span> ${content}</li>`;
+}
+
+function prependActivity(kind, message, href = null) {
+  const key = href || message;
+  if (activityLog.length && activityLog[0].kind === kind && (activityLog[0].href || activityLog[0].message) === key) {
+    return;
+  }
+  const entry = { time: new Date(), kind, message, href };
+  activityLog.unshift(entry);
   if (activityLog.length > MAX_ACTIVITY) activityLog.pop();
+
   const feed = document.getElementById('activity-feed');
-  if (feed) renderActivityFeed(feed);
+  if (!feed) return;
+
+  const empty = feed.querySelector('li.empty');
+  if (empty) empty.remove();
+
+  const wrapper = document.createElement('ul');
+  wrapper.innerHTML = activityItemHtml(entry, true);
+  const item = wrapper.firstElementChild;
+  if (!item) return;
+
+  feed.insertBefore(item, feed.firstChild);
+  while (feed.children.length > MAX_ACTIVITY) {
+    feed.removeChild(feed.lastChild);
+  }
 }
 
-function flushActivityBatch() {
-  if (activityBatch.blocks > 0) {
-    const n = activityBatch.blocks;
-    addActivity('BLOCK', n === 1 ? '1 new block' : `${n} new blocks`);
-    activityBatch.blocks = 0;
-  }
-  if (activityBatch.txs > 0) {
-    const n = activityBatch.txs;
-    addActivity('TX', n === 1 ? '1 transaction' : `${n} transactions`);
-    activityBatch.txs = 0;
-  }
-  activityBatch.timer = null;
+function addActivity(kind, message, href = null) {
+  prependActivity(kind, message, href);
 }
 
-function addActivityBatched(kind) {
-  if (kind === 'BLOCK') activityBatch.blocks++;
-  else if (kind === 'TX') activityBatch.txs++;
-  else return;
-  if (!activityBatch.timer) {
-    activityBatch.timer = setTimeout(flushActivityBatch, 600);
+async function appendBlockExecutions(block) {
+  const txs = block?.tx || block?.transactions || [];
+  for (const tx of txs) {
+    const txObj = typeof tx === 'object' ? tx : { hash: tx };
+    if (!txObj.script?.length) continue;
+    const hash = txObj.hash;
+    if (!hash) continue;
+    let state = '—';
+    try {
+      const log = await getApplicationLogCached(hash);
+      state = log.executions?.[0]?.vmstate || state;
+    } catch (_) {}
+    prependActivity('EXEC', `${shortHash(hash)} → ${state}`, activityTxHref(hash));
   }
 }
 
@@ -725,10 +811,56 @@ function showBlockToast(idx) {
 
 function setLiveStatus(connected) {
   const el = document.getElementById('stat-live');
-  if (!el) return;
-  el.classList.toggle('connected', connected);
-  el.classList.toggle('disconnected', !connected);
-  el.title = connected ? 'Connected — receiving live events' : 'Disconnected — retrying…';
+  const toggle = document.getElementById('live-toggle');
+  if (el) {
+    el.classList.toggle('connected', connected);
+    el.classList.toggle('disconnected', !connected);
+  }
+  if (toggle) {
+    toggle.title = connected
+      ? 'Toggle live event log (connected)'
+      : 'Toggle live event log (disconnected — retrying…)';
+  }
+}
+
+const ACTIVITY_OPEN_KEY = 'nanvil-activity-open';
+
+function setActivityDrawerOpen(open) {
+  const drawer = document.getElementById('activity-drawer');
+  const backdrop = document.getElementById('activity-backdrop');
+  const toggle = document.getElementById('live-toggle');
+  if (!drawer || !toggle) return;
+  drawer.classList.toggle('open', open);
+  drawer.setAttribute('aria-hidden', open ? 'false' : 'true');
+  toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  if (backdrop) backdrop.hidden = !open;
+  try { localStorage.setItem(ACTIVITY_OPEN_KEY, open ? '1' : '0'); } catch (_) {}
+}
+
+function initActivityDrawer() {
+  const toggle = document.getElementById('live-toggle');
+  const close = document.getElementById('activity-close');
+  const backdrop = document.getElementById('activity-backdrop');
+  let open = false;
+  try { open = localStorage.getItem(ACTIVITY_OPEN_KEY) === '1'; } catch (_) {}
+  setActivityDrawerOpen(open);
+  toggle?.addEventListener('click', () => {
+    const drawer = document.getElementById('activity-drawer');
+    setActivityDrawerOpen(!drawer?.classList.contains('open'));
+  });
+  close?.addEventListener('click', () => setActivityDrawerOpen(false));
+  backdrop?.addEventListener('click', () => setActivityDrawerOpen(false));
+  document.getElementById('activity-feed')?.addEventListener('click', e => {
+    const row = e.target.closest('li[data-href]');
+    if (!row?.dataset.href) return;
+    setActivityDrawerOpen(false);
+    if (!e.target.closest('a')) {
+      location.hash = row.dataset.href;
+    }
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') setActivityDrawerOpen(false);
+  });
 }
 
 function wsSend(method, params) {
@@ -759,7 +891,6 @@ function connectWS() {
       await wsSend('subscribe', ['block_added', null]);
       await wsSend('subscribe', ['transaction_added', null]);
       await wsSend('subscribe', ['mempool_event', null]);
-      await wsSend('subscribe', ['transaction_executed', null]);
     } catch (e) {
       console.warn('subscribe failed', e);
     }
@@ -796,17 +927,25 @@ function handleWSNotification(msg) {
   switch (event) {
     case 'block_added': {
       const idx = payload.index;
-      refreshStats(true);
-      addActivityBatched('BLOCK');
+      blockCount = Math.max(blockCount, Number(idx) + 1);
+      document.getElementById('stat-height').textContent = latestIndex();
+      bumpStat('stat-height');
+      prependActivity('BLOCK', `Block #${idx}`, `#/block/${idx}`);
       showBlockToast(idx);
       if (currentView === 'blocks' && parseListPage(routeParts()) === 0) {
-        scheduleViewRefresh('blocks', () => renderBlocks(true));
+        if (!prependBlockFromEvent(payload)) {
+          scheduleViewRefresh('blocks', () => renderBlocks(true));
+        }
+      } else {
+        refreshStats(true);
       }
-      deployedContractsCache.height = -1;
+      trackDeploysInBlock(payload).catch(() => {});
+      appendBlockExecutions(payload).catch(() => {});
       break;
     }
     case 'transaction_added': {
-      addActivityBatched('TX');
+      const hash = payload.hash || payload.txid || payload.Hash || '';
+      prependActivity('TX', hash ? shortHash(hash) : 'New transaction', activityTxHref(hash));
       if (currentView === 'mempool') {
         scheduleViewRefresh('mempool', () => renderMempool(false));
       }
@@ -819,17 +958,11 @@ function handleWSNotification(msg) {
       const tx = payload.transaction;
       const h = tx?.hash;
       const removed = payload.type === 'removed';
-      addActivity('MEMPOOL', `${removed ? '−' : '+'} ${shortHash(h)}`);
+      addActivity('MEMPOOL', `${removed ? '−' : '+'} ${shortHash(h)}`, activityTxHref(h));
       refreshStats(true);
       if (currentView === 'mempool') {
         scheduleViewRefresh('mempool', () => renderMempool(false));
       }
-      break;
-    }
-    case 'transaction_executed': {
-      const state = payload.vmstate || payload.VMState || '—';
-      const id = payload.container || payload.txid || payload.hash || '';
-      addActivity('EXEC', `${shortHash(id)} → ${state}`);
       break;
     }
   }
@@ -864,6 +997,76 @@ async function loadNetworkInfo() {
 
 // ── Blocks ─────────────────────────────────────────────────
 
+function blockRowHtml(block, isNew = false) {
+  const idx = block.index;
+  return `
+    <tr class="${isNew ? 'row-new' : ''}" data-block-index="${idx}">
+      <td><a href="#/block/${idx}">${idx}</a></td>
+      <td>${hashLink(block.hash, 'block')}</td>
+      <td>${formatTime(blockTime(block))}</td>
+      <td>${(block.tx || []).length}</td>
+      <td>${formatGAS(block.sysfee || 0)}</td>
+    </tr>
+  `;
+}
+
+function updateBlocksPagerMeta() {
+  const pager = document.querySelector('#app .panel .pager');
+  if (!pager) return;
+  const top = latestIndex();
+  const totalBlocks = top + 1;
+  const page = parseListPage(routeParts());
+  const pageCount = Math.max(1, Math.ceil(totalBlocks / BLOCKS_PER_PAGE));
+  const safePage = Math.min(Math.max(0, page), pageCount - 1);
+  const start = Math.max(0, top - safePage * BLOCKS_PER_PAGE);
+  const end = Math.max(0, start - BLOCKS_PER_PAGE + 1);
+  const rangeStart = top - start + 1;
+  const rangeEnd = top - end + 1;
+  syncPager(pager, {
+    page: safePage,
+    pageCount,
+    range: `#${rangeStart}–#${rangeEnd} of ${totalBlocks}`,
+    hasOlder: safePage < pageCount - 1,
+    hasNewer: safePage > 0,
+    hrefForPage: p => listHref('blocks', p),
+  });
+}
+
+function prependBlockFromEvent(block) {
+  if (currentView !== 'blocks' || parseListPage(routeParts()) !== 0) return false;
+  const tbody = document.getElementById('blocks-tbody');
+  if (!tbody || block?.index == null || !block.hash) return false;
+
+  const idx = Number(block.index);
+  if (tbody.querySelector(`tr[data-block-index="${idx}"]`)) {
+    lastPrependedBlockIndex = Math.max(lastPrependedBlockIndex, idx);
+    return true;
+  }
+  if (idx <= lastPrependedBlockIndex) return true;
+  const expectedTop = latestIndex();
+  if (idx < expectedTop) return true;
+  if (idx > expectedTop + 1) return false;
+
+  blockCount = Math.max(blockCount, idx + 1);
+  document.getElementById('stat-height').textContent = latestIndex();
+  lastPrependedBlockIndex = idx;
+
+  const wrapper = document.createElement('tbody');
+  wrapper.innerHTML = blockRowHtml(block, true);
+  const row = wrapper.firstElementChild;
+  if (!row) return false;
+
+  const empty = tbody.querySelector('td.empty');
+  if (empty) empty.closest('tr')?.remove();
+
+  tbody.insertBefore(row, tbody.firstChild);
+  while (tbody.rows.length > BLOCKS_PER_PAGE) {
+    tbody.deleteRow(tbody.rows.length - 1);
+  }
+  updateBlocksPagerMeta();
+  return true;
+}
+
 async function renderBlocks(animateNew = false) {
   const gen = beginRender();
   const app = document.getElementById('app');
@@ -888,16 +1091,10 @@ async function renderBlocks(animateNew = false) {
       const block = await rpc('getblock', [hash, 1]);
       if (isStale(gen)) return;
       const isNew = animateNew && i === top;
-      rows.push(`
-        <tr class="${isNew ? 'row-new' : ''}">
-          <td><a href="#/block/${i}">${block.index}</a></td>
-          <td>${hashLink(block.hash, 'block')}</td>
-          <td>${formatTime(blockTime(block))}</td>
-          <td>${(block.tx || []).length}</td>
-          <td>${formatGAS(block.sysfee || 0)}</td>
-        </tr>
-      `);
+      rows.push(blockRowHtml(block, isNew));
     }
+
+    lastPrependedBlockIndex = top;
 
     const pager = pagerHtml({
       page: safePage,
@@ -905,8 +1102,7 @@ async function renderBlocks(animateNew = false) {
       range: `#${rangeStart}–#${rangeEnd} of ${totalBlocks}`,
       hasOlder: safePage < pageCount - 1,
       hasNewer: safePage > 0,
-      olderHref: listHref('blocks', safePage + 1),
-      newerHref: listHref('blocks', safePage - 1),
+      hrefForPage: p => listHref('blocks', p),
     });
     app.innerHTML = `
       <div class="panel fade-in">
@@ -921,13 +1117,8 @@ async function renderBlocks(animateNew = false) {
           <tbody id="blocks-tbody">${rows.join('') || '<tr><td colspan="5" class="empty">No blocks</td></tr>'}</tbody>
         </table>
       </div>
-      <div class="panel activity-panel fade-in">
-        <div class="panel-header"><h2>Live Activity</h2></div>
-        <ul id="activity-feed" class="activity-feed"></ul>
-      </div>
     `;
-    renderActivityFeed(document.getElementById('activity-feed'));
-    bindPager(app.querySelector('.panel-header'));
+    bindPager(app.querySelector('.panel-header'), p => listHref('blocks', p));
   } catch (e) {
     if (!isStale(gen)) {
       app.innerHTML = `<div class="error-box">${esc(e.message)}</div>`;
@@ -941,13 +1132,47 @@ function renderActivityFeed(el) {
     el.innerHTML = '<li class="empty">Waiting for chain events…</li>';
     return;
   }
-  el.innerHTML = activityLog.map(e => {
-    const cls = `act-${e.kind.toLowerCase()}`;
-    return `<li class="${cls}"><span class="act-time">${e.time.toLocaleTimeString()}</span> <span class="act-kind">${e.kind}</span> ${esc(e.message)}</li>`;
-  }).join('');
+  el.innerHTML = activityLog.map(e => activityItemHtml(e)).join('');
 }
 
 // ── Block detail ───────────────────────────────────────────
+
+function isZeroMerkleRoot(merkle) {
+  if (!merkle) return true;
+  const s = String(merkle).toLowerCase().replace(/^0x/i, '');
+  return /^0+$/.test(s);
+}
+
+function isZeroNonce(nonce) {
+  if (nonce == null || nonce === '') return true;
+  return /^0+$/i.test(String(nonce).replace(/^0x/i, ''));
+}
+
+function blockFieldNote(kind, block, txCount) {
+  if (kind === 'merkle' && txCount === 0 && isZeroMerkleRoot(block.merkleroot)) {
+    return 'Empty block — no transactions, so the merkle root is zero by definition.';
+  }
+  if (kind === 'nonce' && block.index > 0 && isZeroNonce(block.nonce)) {
+    return 'Nanvil dev chain — nonce stays zero (no dBFT mining lottery).';
+  }
+  if (kind === 'nonce' && block.index === 0 && !isZeroNonce(block.nonce)) {
+    return 'Genesis nonce from chain configuration.';
+  }
+  return '';
+}
+
+function fieldNoteHtml(note) {
+  if (!note) return '';
+  return `<p class="field-note">${esc(note)}</p>`;
+}
+
+function blockCalloutHtml(block, txCount) {
+  if (txCount > 0) return '';
+  return `<div class="block-callout">
+    <strong>Empty block</strong>
+    <p>No transactions were included. Merkle root <span class="mono">0x00…00</span> is expected — it is not a hash of block contents.</p>
+  </div>`;
+}
 
 async function renderBlock(id, txPage = 0) {
   const app = document.getElementById('app');
@@ -977,16 +1202,16 @@ async function renderBlock(id, txPage = 0) {
       range,
       hasOlder,
       hasNewer,
-      olderHref: blockHref(blockId, page + 1),
-      newerHref: blockHref(blockId, page - 1),
+      hrefForPage: p => blockHref(blockId, p),
     }) : '';
 
     app.innerHTML = `
       <div class="panel fade-in">
         <div class="panel-header">
           <a class="back-link" href="#/blocks">← Blocks</a>
-          <h2>Block #${block.index}</h2>
+          <h2>Block #${block.index}${allTxs.length === 0 ? ' <span class="badge badge-type">Empty</span>' : ''}</h2>
         </div>
+        ${blockCalloutHtml(block, allTxs.length)}
         <dl class="detail-grid">
           <dt>Hash</dt><dd>${esc(block.hash)}</dd>
           <dt>Previous</dt><dd>${block.previousblockhash ? hashLink(block.previousblockhash, 'block') : '—'}</dd>
@@ -995,8 +1220,8 @@ async function renderBlock(id, txPage = 0) {
           <dt>Size</dt><dd>${block.size || '—'} bytes</dd>
           <dt>Confirmations</dt><dd>${block.confirmations ?? '—'}</dd>
           <dt>Next Consensus</dt><dd class="mono">${esc(block.nextconsensus || '—')}</dd>
-          <dt>Merkle Root</dt><dd class="mono">${esc(block.merkleroot || '—')}</dd>
-          <dt>Nonce</dt><dd>${block.nonce ?? '—'}</dd>
+          <dt>Merkle Root</dt><dd class="mono">${esc(block.merkleroot || '—')}${fieldNoteHtml(blockFieldNote('merkle', block, allTxs.length))}</dd>
+          <dt>Nonce</dt><dd class="mono">${block.nonce ?? '—'}${fieldNoteHtml(blockFieldNote('nonce', block, allTxs.length))}</dd>
         </dl>
         <div class="section">
           <div class="section-header">
@@ -1010,13 +1235,26 @@ async function renderBlock(id, txPage = 0) {
         </div>
       </div>
     `;
-    bindPager(app.querySelector('.section-header'));
+    bindPager(app.querySelector('.section-header'), p => blockHref(blockId, p));
   } catch (e) {
     app.innerHTML = `<div class="error-box">${esc(e.message)}</div><a href="#/blocks">← Back</a>`;
   }
 }
 
 // ── Transactions list ──────────────────────────────────────
+
+async function countChainTxs(gen) {
+  const top = latestIndex();
+  let count = 0;
+  for (let i = 0; i <= top; i++) {
+    if (gen != null && isStale(gen)) return null;
+    const hash = await rpc('getblockhash', [i]);
+    if (gen != null && isStale(gen)) return null;
+    const block = await rpc('getblock', [hash, 1]);
+    count += (block.tx || []).length;
+  }
+  return count;
+}
 
 async function collectRecentTxs(skip, limit, gen) {
   const txs = [];
@@ -1056,12 +1294,22 @@ async function renderTransactions(showLoading = true) {
     await loadContractCache();
     if (isStale(gen)) return;
     const page = parseListPage(routeParts());
-    const skip = page * TXS_PER_PAGE;
+    const totalTxs = await countChainTxs(gen);
+    if (isStale(gen)) return;
+    const pageCount = totalTxs ? Math.max(1, Math.ceil(totalTxs / TXS_PER_PAGE)) : null;
+    const safePage = pageCount ? Math.min(Math.max(0, page), pageCount - 1) : page;
+    if (pageCount && safePage !== page) {
+      location.hash = listHref('transactions', safePage);
+      return;
+    }
+    const skip = safePage * TXS_PER_PAGE;
     const fetched = await collectRecentTxs(skip, TXS_PER_PAGE + 1, gen);
     if (isStale(gen)) return;
-    const hasOlder = fetched.length > TXS_PER_PAGE;
+    const hasOlder = pageCount ? safePage < pageCount - 1 : fetched.length > TXS_PER_PAGE;
     const pageTxs = fetched.slice(0, TXS_PER_PAGE);
-    const range = pageTxs.length ? `${skip + 1}–${skip + pageTxs.length}` : '';
+    const range = pageTxs.length
+      ? (totalTxs ? `${skip + 1}–${skip + pageTxs.length} of ${totalTxs}` : `${skip + 1}–${skip + pageTxs.length}`)
+      : '';
 
     const rows = await mapPool(pageTxs, 4, async tx => {
       if (isStale(gen)) return '';
@@ -1104,12 +1352,12 @@ async function renderTransactions(showLoading = true) {
     if (isStale(gen)) return;
 
     const pager = pagerHtml({
-      page,
+      page: safePage,
+      pageCount,
       range,
       hasOlder,
-      hasNewer: page > 0,
-      olderHref: listHref('transactions', page + 1),
-      newerHref: listHref('transactions', page - 1),
+      hasNewer: safePage > 0,
+      hrefForPage: p => listHref('transactions', p),
     });
     app.innerHTML = `
       <div class="panel fade-in">
@@ -1125,7 +1373,7 @@ async function renderTransactions(showLoading = true) {
         </table>
       </div>
     `;
-    bindPager(app.querySelector('.panel-header'));
+    bindPager(app.querySelector('.panel-header'), p => listHref('transactions', p));
   } catch (e) {
     if (!isStale(gen)) {
       app.innerHTML = `<div class="error-box">${esc(e.message)}</div>`;
@@ -1369,22 +1617,14 @@ async function renderContracts() {
       </tr>
     `).join('');
     const { slice, page: safePage, pageCount, range, hasOlder, hasNewer } = paginateSlice(deployed, page, CONTRACTS_PER_PAGE);
-    const deployedRows = slice.map(c => `
-      <tr>
-        <td><span class="badge badge-type">Deployed</span></td>
-        <td>${esc(c.name)}</td>
-        <td>${hashLink(c.hash, 'contract')}</td>
-        <td>${c.id ?? '—'}</td>
-      </tr>
-    `).join('');
+    const deployedRows = slice.map(c => deployedContractRowHtml(c)).join('');
     const deployedPager = deployed.length ? pagerHtml({
       page: safePage,
       pageCount,
       range,
       hasOlder,
       hasNewer,
-      olderHref: listHref('contracts', safePage + 1),
-      newerHref: listHref('contracts', safePage - 1),
+      hrefForPage: p => listHref('contracts', p),
     }) : '';
 
     app.innerHTML = `
@@ -1395,20 +1635,150 @@ async function renderContracts() {
           <tbody>${nativeRows || '<tr><td colspan="4" class="empty">No native contracts</td></tr>'}</tbody>
         </table>
       </div>
-      <div class="panel fade-in">
+      <div class="panel fade-in deployed-contracts-panel">
         <div class="panel-header">
           <h2>Deployed Contracts (${deployed.length})</h2>
           ${deployedPager}
         </div>
         <table>
           <thead><tr><th>Kind</th><th>Name</th><th>Hash</th><th>ID</th></tr></thead>
-          <tbody>${deployedRows || '<tr><td colspan="4" class="empty">No deployed contracts</td></tr>'}</tbody>
+          <tbody id="deployed-contracts-tbody">${deployedRows || '<tr><td colspan="4" class="empty">No deployed contracts</td></tr>'}</tbody>
         </table>
       </div>
     `;
-    bindPager(app.querySelectorAll('.panel')[1]?.querySelector('.panel-header'));
+    bindPager(app.querySelectorAll('.panel')[1]?.querySelector('.panel-header'), p => listHref('contracts', p));
   } catch (e) {
     app.innerHTML = `<div class="error-box">${esc(e.message)}</div>`;
+  }
+}
+
+async function getManagementContractHash() {
+  if (managementContractHash) return managementContractHash;
+  const natives = await rpc('getnativecontracts');
+  const mgmt = (natives || []).find(c =>
+    (c.manifest?.name || '').toLowerCase() === 'contractmanagement'
+  );
+  managementContractHash = mgmt?.hash ? contractKey(mgmt.hash) : null;
+  return managementContractHash;
+}
+
+function stackItemToContractHash(item) {
+  if (!item || item.type !== 'ByteString') return null;
+  const raw = item.value;
+  if (!raw || typeof raw !== 'string') return null;
+  try {
+    const le = b64ToBytes(raw);
+    if (le.length !== 20) return null;
+    const be = [...le].reverse().map(b => b.toString(16).padStart(2, '0')).join('');
+    return '0x' + be;
+  } catch {
+    return null;
+  }
+}
+
+function deployedHashFromDeployNotification(notification) {
+  const state = notification?.state;
+  if (!state || state.type !== 'Array' || !Array.isArray(state.value) || !state.value.length) {
+    return null;
+  }
+  return stackItemToContractHash(state.value[0]);
+}
+
+async function registerDeployedContract(hash, nativeHashes, found) {
+  const h = contractKey(hash);
+  if (!h || nativeHashes.has(h) || found.has(h)) return null;
+  let name = 'Contract';
+  let entry = { hash: contractHashForRPC(hash), name };
+  try {
+    const cs = await rpc('getcontractstate', [contractHashForRPC(hash)]);
+    name = cs.manifest?.name || name;
+    entry = { hash: cs.hash || contractHashForRPC(hash), name, id: cs.id };
+  } catch (_) {}
+  found.set(h, entry);
+  return entry;
+}
+
+async function collectDeploysFromLog(log, nativeHashes, found) {
+  const added = [];
+  const mgmtHash = await getManagementContractHash();
+  for (const ex of log.executions || []) {
+    for (const n of ex.notifications || []) {
+      if ((n.eventname || '').toLowerCase() !== 'deploy') continue;
+      if (mgmtHash && contractKey(n.contract) !== mgmtHash) continue;
+      const hash = deployedHashFromDeployNotification(n);
+      if (!hash) continue;
+      const entry = await registerDeployedContract(hash, nativeHashes, found);
+      if (entry) added.push(entry);
+    }
+  }
+  return added;
+}
+
+async function scanBlockForDeploys(block, nativeHashes, found) {
+  const added = [];
+  for (const tx of block.tx || []) {
+    if (typeof tx === 'object' && tx.script != null && !tx.script.length) continue;
+    const txHash = typeof tx === 'object' ? tx.hash : tx;
+    if (!txHash) continue;
+    try {
+      const log = await rpc('getapplicationlog', [txHash]);
+      const blockAdded = await collectDeploysFromLog(log, nativeHashes, found);
+      added.push(...blockAdded);
+    } catch (_) {}
+  }
+  return added;
+}
+
+function deployedContractRowHtml(c, isNew = false) {
+  return `
+    <tr class="${isNew ? 'row-new' : ''}" data-contract-hash="${esc(contractKey(c.hash))}">
+      <td><span class="badge badge-type">Deployed</span></td>
+      <td>${esc(c.name)}</td>
+      <td>${hashLink(c.hash, 'contract')}</td>
+      <td>${c.id ?? '—'}</td>
+    </tr>
+  `;
+}
+
+function updateDeployedContractsHeader(count) {
+  const h2 = document.querySelector('#app .deployed-contracts-panel .panel-header h2');
+  if (h2) h2.textContent = `Deployed Contracts (${count})`;
+}
+
+function prependDeployedContractRow(contract) {
+  if (currentView !== 'contracts' || parseListPage(routeParts()) !== 0) return false;
+  const tbody = document.getElementById('deployed-contracts-tbody');
+  if (!tbody) return false;
+  const key = contractKey(contract.hash);
+  if (tbody.querySelector(`tr[data-contract-hash="${key}"]`)) return true;
+  const wrapper = document.createElement('tbody');
+  wrapper.innerHTML = deployedContractRowHtml(contract, true);
+  const row = wrapper.firstElementChild;
+  if (!row) return false;
+  const empty = tbody.querySelector('td.empty');
+  if (empty) empty.closest('tr')?.remove();
+  tbody.insertBefore(row, tbody.firstChild);
+  while (tbody.rows.length > CONTRACTS_PER_PAGE) {
+    tbody.deleteRow(tbody.rows.length - 1);
+  }
+  updateDeployedContractsHeader(deployedContractsCache.list?.length ?? tbody.rows.length);
+  return true;
+}
+
+async function trackDeploysInBlock(block) {
+  const natives = await rpc('getnativecontracts');
+  const nativeHashes = new Set((natives || []).map(c => contractKey(c.hash)));
+  const found = new Map((deployedContractsCache.list || []).map(c => [contractKey(c.hash), c]));
+  const added = await scanBlockForDeploys(block, nativeHashes, found);
+  if (!added.length) return;
+  const list = [...found.values()];
+  deployedContractsCache = { height: latestIndex(), list };
+  for (const c of added) {
+    if (c.hash) contractNameCache.set(contractKey(c.hash), c.name);
+    if (!prependDeployedContractRow(c)) {
+      scheduleViewRefresh('contracts', () => renderContracts());
+      return;
+    }
   }
 }
 
@@ -1420,29 +1790,7 @@ async function findDeployedContracts() {
   for (let i = 0; i <= top; i++) {
     const hash = await rpc('getblockhash', [i]);
     const block = await rpc('getblock', [hash, 1]);
-    for (const tx of block.tx || []) {
-      if (!tx.script?.length) continue;
-      try {
-        const log = await rpc('getapplicationlog', [tx.hash]);
-        for (const ex of log.executions || []) {
-          for (const n of ex.notifications || []) {
-            if (n.eventname === 'Deploy' && n.contract) {
-              const h = contractKey(n.contract);
-              if (!nativeHashes.has(h) && !found.has(h)) {
-                let name = 'Contract';
-                try {
-                  const cs = await rpc('getcontractstate', [n.contract]);
-                  name = cs.manifest?.name || name;
-                  found.set(h, { hash: n.contract, name, id: cs.id });
-                } catch {
-                  found.set(h, { hash: n.contract, name });
-                }
-              }
-            }
-          }
-        }
-      } catch (_) {}
-    }
+    await scanBlockForDeploys(block, nativeHashes, found);
   }
   return [...found.values()];
 }
@@ -1517,8 +1865,7 @@ async function renderMempool(showLoading = true) {
       range,
       hasOlder,
       hasNewer,
-      olderHref: listHref('mempool', safePage + 1),
-      newerHref: listHref('mempool', safePage - 1),
+      hrefForPage: p => listHref('mempool', p),
     });
     app.innerHTML = `
       <div class="panel fade-in">
@@ -1532,7 +1879,7 @@ async function renderMempool(showLoading = true) {
         </table>
       </div>
     `;
-    bindPager(app.querySelector('.panel-header'));
+    bindPager(app.querySelector('.panel-header'), p => listHref('mempool', p));
   } catch (e) {
     if (!isStale(gen)) {
       app.innerHTML = `<div class="error-box">${esc(e.message)}</div>`;
@@ -1588,6 +1935,7 @@ document.getElementById('search-form')?.addEventListener('submit', handleSearch)
 
 window.addEventListener('hashchange', route);
 route();
+initActivityDrawer();
 connectWS();
 loadNetworkInfo();
 loadContractCache();

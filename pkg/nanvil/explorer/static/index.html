@@ -4,9 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Nanvil Explorer</title>
+  <script>(function(){try{var k='nanvil-theme',t=localStorage.getItem(k);if(t!=='light'&&t!=='dark')t=matchMedia('(prefers-color-scheme:light)').matches?'light':'dark';document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','dark');}})();</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="stylesheet" href="theme.css">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -15,7 +18,7 @@
   <header class="topbar">
     <div class="brand">
       <div class="logo-wrap">
-        <span class="logo">N</span>
+        <img src="nanvil-logo.png" alt="" class="logo-img" width="42" height="42">
       </div>
       <div>
         <h1>Nanvil Explorer</h1>
@@ -33,6 +36,17 @@
       />
       <button type="submit" class="search-btn">Search</button>
     </form>
+    <a href="/docs/" class="docs-link" title="Nanvil documentation">Docs</a>
+    <div class="theme-switcher" role="group" aria-label="Theme">
+      <button type="button" class="theme-option" data-theme="light" aria-pressed="false" title="Light theme">
+        <span class="theme-option-icon" aria-hidden="true">☀</span>
+        <span class="theme-option-label">Light</span>
+      </button>
+      <button type="button" class="theme-option" data-theme="dark" aria-pressed="false" title="Dark theme">
+        <span class="theme-option-icon" aria-hidden="true">☾</span>
+        <span class="theme-option-label">Dark</span>
+      </button>
+    </div>
     <div class="stats" id="header-stats">
       <div class="stat-card">
         <span class="stat-label">Height</span>
@@ -46,10 +60,10 @@
         <span class="stat-label">Network</span>
         <span class="stat-value stat-network" id="stat-network">—</span>
       </div>
-      <div class="stat-card live-stat">
+      <button type="button" class="stat-card live-stat" id="live-toggle" aria-expanded="false" aria-controls="activity-drawer" title="Toggle live event log">
         <span class="stat-label">Live</span>
-        <span class="stat-value live-indicator" id="stat-live" title="WebSocket connection">●</span>
-      </div>
+        <span class="stat-value live-indicator" id="stat-live">●</span>
+      </button>
     </div>
   </header>
 
@@ -74,12 +88,27 @@
     <div class="loading" id="loading">Loading…</div>
   </main>
 
+  <div id="activity-backdrop" class="activity-backdrop" hidden></div>
+  <aside id="activity-drawer" class="activity-drawer" aria-label="Live activity" aria-hidden="true">
+    <div class="activity-drawer-header">
+      <h2>Live events</h2>
+      <button type="button" class="activity-drawer-close" id="activity-close" aria-label="Close live events">×</button>
+    </div>
+    <p class="activity-drawer-hint">WebSocket feed — blocks, txs, mempool, executions</p>
+    <ul id="activity-feed" class="activity-feed">
+      <li class="empty">Waiting for chain events…</li>
+    </ul>
+  </aside>
+
   <footer class="footer">
     <span>Powered by <strong>nanvil</strong></span>
+    <span class="footer-sep">·</span>
+    <a href="/docs/">Documentation</a>
     <span class="footer-sep">·</span>
     <span class="mono" id="footer-rpc">RPC proxy</span>
   </footer>
 
+  <script src="theme.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
