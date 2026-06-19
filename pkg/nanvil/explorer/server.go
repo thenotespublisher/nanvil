@@ -89,6 +89,14 @@ func (s *Server) Start() error {
 		proxy.ServeHTTP(w, r)
 	})
 	mux.HandleFunc("/api/ws", s.handleWSProxy)
+	mux.HandleFunc("/docs/", s.handleDocs)
+	mux.HandleFunc("/docs", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/docs" {
+			s.handleDocs(w, r)
+			return
+		}
+		http.Redirect(w, r, "/docs/", http.StatusFound)
+	})
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" && !strings.Contains(r.URL.Path, ".") {
 			r.URL.Path = "/"
