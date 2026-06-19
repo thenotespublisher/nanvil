@@ -50,6 +50,25 @@ func TestDiskCache(t *testing.T) {
 	v, ok := c.Get("key")
 	require.True(t, ok)
 	require.Equal(t, []byte("val"), v)
+	require.NotEmpty(t, c.Dir())
+	require.Contains(t, fork.CacheKey(util.Uint160{1}, []byte{2}), "_02")
+}
+
+func TestTrackingOverlayExportImport(t *testing.T) {
+	o := fork.NewTrackingOverlay()
+	o.Put("a", []byte("1"))
+	o.Delete("b")
+	w, d := o.Export()
+	require.Len(t, w, 1)
+	require.Len(t, d, 1)
+
+	o2 := fork.NewTrackingOverlay()
+	o2.Import(w, d)
+	v, ok := o2.Get("a")
+	require.True(t, ok)
+	require.Equal(t, []byte("1"), v)
+	_, del := o2.Get("b")
+	require.True(t, del)
 }
 
 func TestManifestJSON(t *testing.T) {

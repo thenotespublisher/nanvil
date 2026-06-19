@@ -29,7 +29,7 @@ func TestCreateBranchMockRPC(t *testing.T) {
 		case "getstateroot":
 			_, _ = w.Write([]byte(`{"jsonrpc":"2.0","id":1,"result":{"version":0,"index":10,"roothash":"0x` + util.Uint256{2}.StringBE() + `","witnesses":[]}}`))
 		case "getnativecontracts":
-			_, _ = w.Write([]byte(`{"jsonrpc":"2.0","id":1,"result":[{"id":-8,"hash":"0x` + util.Uint160{8}.StringBE() + `","manifest":{"name":"ContractManagement"}}]}`))
+			_, _ = w.Write([]byte(`{"jsonrpc":"2.0","id":1,"result":[{"id":-1,"hash":"0x` + util.Uint160{8}.StringBE() + `","manifest":{"name":"ContractManagement"}}]}`))
 		case "findstates":
 			_, _ = w.Write([]byte(`{"jsonrpc":"2.0","id":1,"result":{"results":[],"truncated":false}}`))
 		default:
