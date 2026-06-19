@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Nanvil — Neo3 local development node with instant chains, prefunded accounts, mainnet forks, and a built-in block explorer.">
+  <title>Nanvil — Neo3 local dev node</title>
+  <script>(function(){try{var k='nanvil-theme',t=localStorage.getItem(k);if(t!=='light'&&t!=='dark')t=matchMedia('(prefers-color-scheme:light)').matches?'light':'dark';document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','dark');}})();</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="stylesheet" href="theme.css">
+  <link rel="stylesheet" href="landing.css">
+</head>
+<body class="landing-page">
+  <div class="bg-mesh" aria-hidden="true"></div>
+
+  <header class="landing-topbar">
+    <a href="index.html" class="landing-brand">
+      <img src="nanvil-logo.png" alt="" class="logo-img" width="40" height="40">
+      <span>
+        <strong>Nanvil</strong>
+        <small>Neo3 local dev node</small>
+      </span>
+    </a>
+    <nav class="landing-nav">
+      <a href="index.html" class="active">Home</a>
+      <a href="docs/index.html">Docs</a>
+      <a href="https://github.com/merl111/nanvil" class="btn-github" target="_blank" rel="noopener noreferrer">GitHub</a>
+      <div class="theme-switcher" role="group" aria-label="Theme">
+        <button type="button" class="theme-option" data-theme="light" aria-pressed="false" title="Light theme">
+          <span class="theme-option-icon" aria-hidden="true">☀</span>
+          <span class="theme-option-label">Light</span>
+        </button>
+        <button type="button" class="theme-option" data-theme="dark" aria-pressed="false" title="Dark theme">
+          <span class="theme-option-icon" aria-hidden="true">☾</span>
+          <span class="theme-option-label">Dark</span>
+        </button>
+      </div>
+    </nav>
+  </header>
+
+  <main class="landing-main">
+    <section class="landing-hero">
+      <img src="nanvil-logo.png" alt="Nanvil logo" class="hero-logo" width="88" height="88">
+      <h1>Neo3 local development, instantly</h1>
+      <p class="hero-tagline">
+        Nanvil is a Neo3 dev node inspired by
+        <a href="https://getfoundry.sh/anvil/" target="_blank" rel="noopener noreferrer">Foundry Anvil</a>.
+        Spin up chains, prefund accounts, fork mainnet, cheat time — with a built-in block explorer.
+      </p>
+      <div class="hero-actions">
+        <a href="docs/getting-started.html" class="btn btn-primary">Get started</a>
+        <a href="docs/index.html" class="btn btn-secondary">Read the docs</a>
+        <a href="https://github.com/merl111/nanvil" class="btn btn-secondary" target="_blank" rel="noopener noreferrer">View on GitHub</a>
+      </div>
+      <div class="hero-install">
+        <p class="hero-install-label">Quick start</p>
+        <pre><code>git clone https://github.com/merl111/nanvil.git
+cd nanvil && make build
+./bin/nanvil start</code></pre>
+      </div>
+    </section>
+
+    <section class="landing-section">
+      <h2>Everything you need for Neo3 dev</h2>
+      <p class="section-lead">Local chain, dev RPC cheats, mainnet forks, and tooling — all in one binary.</p>
+      <div class="features-grid">
+        <article class="feature-card">
+          <div class="feature-icon" aria-hidden="true">▣</div>
+          <h3>Local chain</h3>
+          <p>Single-validator in-memory Neo3 network with auto-mining on every submitted transaction.</p>
+        </article>
+        <article class="feature-card">
+          <div class="feature-icon" aria-hidden="true">◎</div>
+          <h3>Prefunded accounts</h3>
+          <p>Configurable dev mnemonic and GAS balances — keys printed on startup and queryable via RPC.</p>
+        </article>
+        <article class="feature-card">
+          <div class="feature-icon" aria-hidden="true">⇄</div>
+          <h3>Block explorer</h3>
+          <p>Web UI on port 8546 with live WebSocket feed, contract deploys, and embedded documentation.</p>
+        </article>
+        <article class="feature-card">
+          <div class="feature-icon" aria-hidden="true">⎇</div>
+          <h3>Mainnet / testnet forks</h3>
+          <p>Lazy StateService fork at any block height — deploy and test against real remote state locally.</p>
+        </article>
+        <article class="feature-card">
+          <div class="feature-icon" aria-hidden="true">⚡</div>
+          <h3>Dev RPC cheats</h3>
+          <p><code>nanvil_mine</code>, time travel, snapshots, mempool control, and <code>evm_*</code> aliases.</p>
+        </article>
+        <article class="feature-card">
+          <div class="feature-icon" aria-hidden="true">◈</div>
+          <h3>ncast CLI</h3>
+          <p>Cast-style commands for balances, transfers, contract calls, and deploys against a running node.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="landing-section">
+      <h2>Default services</h2>
+      <p class="section-lead">After <code>./bin/nanvil start</code>, these endpoints are available locally.</p>
+      <div class="services-table-wrap">
+        <table class="services-table">
+          <thead>
+            <tr>
+              <th>Service</th>
+              <th>URL</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>JSON-RPC</td>
+              <td><code>http://127.0.0.1:8545</code></td>
+            </tr>
+            <tr>
+              <td>Block explorer</td>
+              <td><code>http://127.0.0.1:8546</code></td>
+            </tr>
+            <tr>
+              <td>Documentation (in explorer)</td>
+              <td><code>http://127.0.0.1:8546/docs/</code></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer class="landing-footer">
+    <span>Built on <a href="https://github.com/nspcc-dev/neo-go" target="_blank" rel="noopener noreferrer">neo-go</a></span>
+    <span>·</span>
+    <a href="docs/index.html">Documentation</a>
+    <span>·</span>
+    <a href="https://github.com/merl111/nanvil" target="_blank" rel="noopener noreferrer">Source code</a>
+    <span>·</span>
+    <span>Apache 2.0</span>
+  </footer>
+
+  <script src="theme.js"></script>
+</body>
+</html>
