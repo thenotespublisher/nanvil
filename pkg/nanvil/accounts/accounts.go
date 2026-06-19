@@ -167,6 +167,32 @@ func (m *Manager) FundAddress(bc *core.Blockchain, to util.Uint160, amount int64
 	return mine(tx)
 }
 
+// SignedGASTransfer builds a signed GAS transfer from a dev account.
+func (m *Manager) SignedGASTransfer(bc *core.Blockchain, from DevAccount, to util.Uint160, amount int64) (*transaction.Transaction, error) {
+	gasHash, err := bc.GetNativeContractScriptHash(nativenames.Gas)
+	if err != nil {
+		return nil, err
+	}
+	script, err := smartcontract.CreateCallScript(gasHash, "transfer", from.Signer.ScriptHash(), to, amount, nil)
+	if err != nil {
+		return nil, err
+	}
+	tx := transaction.New(script, 0)
+	tx.ValidUntilBlock = bc.BlockHeight() + bc.GetMaxValidUntilBlockIncrement()
+	tx.Signers = []transaction.Signer{{
+		Account: from.Signer.ScriptHash(),
+		Scopes:  transaction.CalledByEntry,
+	}}
+	addNetworkFee(bc, tx, from.Signer)
+	if err := addSystemFee(bc, tx); err != nil {
+		return nil, err
+	}
+	if err := from.Signer.SignTx(bc.GetConfig().Magic, tx); err != nil {
+		return nil, err
+	}
+	return tx, nil
+}
+
 func (m *Manager) prepareTx(bc *core.Blockchain, tx *transaction.Transaction) error {
 	addNetworkFee(bc, tx, m.Validator)
 	if err := addSystemFee(bc, tx); err != nil {

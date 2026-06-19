@@ -63,6 +63,56 @@ func TestPrintStartupInfo(t *testing.T) {
 	require.Contains(t, out, accounts.ValidatorWIF())
 }
 
+func TestSignedGASTransfer(t *testing.T) {
+	opts := nanvilcfg.DefaultStartOptions()
+	opts.Accounts = 3
+	pubHex, err := accounts.ValidatorPublicKeyHex()
+	require.NoError(t, err)
+
+	bcCfg := nanvilcfg.BlockchainConfig(opts)
+	bcCfg.StandbyCommittee = []string{pubHex}
+	bc, err := core.NewBlockchain(storage.NewMemoryStore(), bcCfg, zaptest.NewLogger(t))
+	require.NoError(t, err)
+	t.Cleanup(bc.Close)
+	go bc.Run()
+
+	mgr, err := accounts.NewManager(opts.Mnemonic, opts.Accounts)
+	require.NoError(t, err)
+	builder := producer.NewBlockBuilder(bc, mgr.Validator, false)
+	require.NoError(t, mgr.FundAll(bc, opts.Balance, func(txs ...*transaction.Transaction) error {
+		_, err := builder.Mine(txs...)
+		return err
+	}))
+
+	tx, err := mgr.SignedGASTransfer(bc, mgr.Accounts[1], mgr.Accounts[0].Signer.ScriptHash(), 50_0000_0000)
+	require.NoError(t, err)
+	require.NotNil(t, tx)
+	require.Len(t, tx.Signers, 1)
+}
+
+func TestFundAddress(t *testing.T) {
+	opts := nanvilcfg.DefaultStartOptions()
+	opts.Accounts = 2
+	pubHex, err := accounts.ValidatorPublicKeyHex()
+	require.NoError(t, err)
+	bcCfg := nanvilcfg.BlockchainConfig(opts)
+	bcCfg.StandbyCommittee = []string{pubHex}
+	bc, err := core.NewBlockchain(storage.NewMemoryStore(), bcCfg, zaptest.NewLogger(t))
+	require.NoError(t, err)
+	t.Cleanup(bc.Close)
+	go bc.Run()
+
+	mgr, err := accounts.NewManager(opts.Mnemonic, opts.Accounts)
+	require.NoError(t, err)
+	builder := producer.NewBlockBuilder(bc, mgr.Validator, false)
+	target := mgr.Accounts[1].Signer.ScriptHash()
+	require.NoError(t, mgr.FundAddress(bc, target, 5_0000_0000, func(txs ...*transaction.Transaction) error {
+		_, err := builder.Mine(txs...)
+		return err
+	}))
+	require.Equal(t, int64(5_0000_0000), bc.GetUtilityTokenBalance(target).Int64())
+}
+
 func TestFundAll(t *testing.T) {
 	opts := nanvilcfg.DefaultStartOptions()
 	opts.Accounts = 10
@@ -79,7 +129,7 @@ func TestFundAll(t *testing.T) {
 
 	mgr, err := accounts.NewManager(opts.Mnemonic, opts.Accounts)
 	require.NoError(t, err)
-	builder := producer.NewBlockBuilder(bc, mgr.Validator)
+	builder := producer.NewBlockBuilder(bc, mgr.Validator, false)
 
 	require.NoError(t, mgr.FundAll(bc, opts.Balance, func(txs ...*transaction.Transaction) error {
 		_, err := builder.Mine(txs...)
