@@ -1453,6 +1453,7 @@ func (s *Server) getTokenTransfers(ps params.Params, isNEP11 bool) (any, *neorpc
 	// a recent "since" filter that would hide every dev-chain transfer.
 	if s.chain.GetConfig().Magic == netmode.NanvilNet {
 		start = 0
+		end = ^uint64(0)
 	}
 
 	bs := &tokenTransfers{
