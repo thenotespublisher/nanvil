@@ -12,9 +12,22 @@ OUT_DIR="${OUT_DIR:-dist}"
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TAG="${VERSION#v}"
+TAG="${TAG#V}"
+if [[ -z "$TAG" ]]; then
+	echo "invalid VERSION (expected vX.Y.Z): $VERSION" >&2
+	exit 1
+fi
 NAME="nanvil-${TAG}-${GOOS}-${GOARCH}"
 STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT
+
+if [[ "$OUT_DIR" = /* ]]; then
+	mkdir -p "$OUT_DIR"
+else
+	mkdir -p "$ROOT/$OUT_DIR"
+	OUT_DIR="$ROOT/$OUT_DIR"
+fi
+OUT_DIR="$(cd "$OUT_DIR" && pwd)"
 
 cd "$ROOT"
 make sync-docs >/dev/null
@@ -35,12 +48,13 @@ if [[ -f LICENSE.md ]]; then
 fi
 
 mkdir -p "$OUT_DIR"
+OUT_FILE="$OUT_DIR/${NAME}.zip"
 if [[ "$GOOS" == "windows" ]]; then
 	(
 		cd "$STAGE"
-		zip -rq "$OUT_DIR/${NAME}.zip" .
+		zip -rq "$OUT_FILE" .
 	)
-	echo "$OUT_DIR/${NAME}.zip"
+	echo "$OUT_FILE"
 else
 	tar -czf "$OUT_DIR/${NAME}.tar.gz" -C "$STAGE" .
 	echo "$OUT_DIR/${NAME}.tar.gz"
