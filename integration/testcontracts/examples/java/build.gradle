@@ -1,0 +1,24 @@
+plugins {
+    id 'java'
+    id 'io.neow3j.gradle-plugin' version '3.24.1'
+}
+
+group 'io.nanvil.examples'
+version '1.0-SNAPSHOT'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'io.neow3j:devpack:3.24.1'
+}
+
+neow3jCompiler {
+    className = 'io.nanvil.examples.HelloContract'
+}

@@ -16,7 +16,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 NCAST="${NCAST:-$ROOT/bin/ncast}"
-COMPILE="${COMPILE:-$ROOT/bin/compilecontract}"
+NSMITH="${NSMITH:-$ROOT/bin/nsmith}"
 RPC="${NCAST_RPC:-http://127.0.0.1:8545}"
 WIF="${NCAST_WIF:-L2RGfeLD3ZU13yvgQ75VjSnw3bfAP4VUnGRa6NGYsEFXvMwi5GKa}"
 CONTRACT_SRC="${CONTRACT_SRC:-$ROOT/integration/testcontracts/explorer_deploy/main.go}"
@@ -34,8 +34,8 @@ rpc() {
 }
 
 build_tools() {
-  log "building compilecontract"
-  go build -o "$COMPILE" ./cmd/compilecontract/
+  log "building nsmith"
+  go build -o "$NSMITH" ./cmd/nsmith/
   if [[ ! -x "$NCAST" ]]; then
     log "building ncast"
     go build -o "$NCAST" ./cmd/ncast/
@@ -58,7 +58,7 @@ compile_contract() {
   local manifest nef name
   name="ExplorerDeploy$(date +%s)"
   log "compiling $CONTRACT_SRC as $name"
-  (cd "$TMPDIR" && "$COMPILE" --in "$CONTRACT_SRC" --out contract --name "$name")
+  (cd "$TMPDIR" && "$NSMITH" compile "$CONTRACT_SRC" --out contract --name "$name")
   nef="$TMPDIR/contract.nef"
   manifest="$TMPDIR/contract.manifest.json"
   [[ -f "$nef" && -f "$manifest" ]] || die "compile output missing"

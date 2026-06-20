@@ -1,3 +1,4 @@
+// Deprecated: use nsmith compile instead.
 package main
 
 import (

@@ -1,0 +1,7 @@
+# Compiler output (examples are sources only; run scripts/test-nsmith-examples.sh)
+*.nef
+*.manifest.json
+*.nefdbgnfo
+bin/
+build/
+.gradle/
