@@ -18,13 +18,24 @@ Nanvil is a Neo3 local development node inspired by [Foundry Anvil](https://getf
 - **Dev RPC** — `nanvil_mine`, `nanvil_increaseTime`, snapshots, mempool control, `nanvil_nodeInfo`, and `evm_*` aliases
 - **State persistence** — `--data-dir` saves full chain state on shutdown and restores on restart
 - **ncast** — cast-style CLI for balances, transfers, contract calls, and deploys
+- **nsmith** — multi-language contract compiler (Go, Python, Java, C#) for NEF + manifest artifacts
 
 ## Quick start
+
+Download the latest release for your platform from **[GitHub Releases](https://github.com/merl111/nanvil/releases/latest)**, extract it, and start a node:
+
+```bash
+./nanvil start
+```
+
+Or build from source:
 
 ```bash
 make build
 ./bin/nanvil start
 ```
+
+Builds `nanvil`, `ncast`, and `nsmith` into `./bin/`.
 
 This starts:
 
@@ -81,7 +92,19 @@ export NCAST_RPC=http://127.0.0.1:8545
 ./bin/ncast deploy --wif <wif> --nef contract.nef --manifest contract.manifest.json
 ```
 
-See [examples cookbook](docs/examples.md) for more workflows.
+See [examples cookbook](docs/examples.md) for more workflows, including multi-language contract compilation with `nsmith`.
+
+## nsmith
+
+Compile Neo smart contracts in **Go**, **Python**, **C#**, or **Java**:
+
+```bash
+./bin/nsmith compile integration/testcontracts/examples/go --out /tmp/example
+./scripts/test-nsmith-examples.sh   # all four languages
+./bin/nsmith doctor --all           # check toolchains
+```
+
+See [nsmith compiler](docs/nsmith.md) for install, `init`, and language-specific setup.
 
 ## Useful flags
 
@@ -107,6 +130,7 @@ Browse docs in the explorer at `http://127.0.0.1:8546/docs/` while a node is run
 - [Getting started](docs/getting-started.md)
 - [Examples cookbook](docs/examples.md)
 - [CLI reference](docs/cli-reference.md)
+- [nsmith compiler](docs/nsmith.md)
 - [RPC reference](docs/rpc-reference.md)
 - [Block explorer](docs/explorer.md)
 - [Forking](docs/forking.md)

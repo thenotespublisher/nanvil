@@ -2,17 +2,34 @@
 
 ## Install
 
+### Download a release (recommended)
+
+Pre-built archives include `nanvil`, `ncast`, and `nsmith` for Linux, macOS, and Windows.
+
+1. Open **[GitHub Releases](https://github.com/merl111/nanvil/releases/latest)** and download the archive for your platform (`nanvil-<version>-<os>-<arch>.tar.gz` or `.zip` on Windows).
+2. Extract the archive and run from that directory:
+
 ```bash
-git clone <nanvil-repo>
+./nanvil start
+```
+
+Verify checksums with `SHA256SUMS` on the release page.
+
+### Build from source {#build-from-source}
+
+```bash
+git clone https://github.com/merl111/nanvil.git
 cd nanvil
 make build
 ```
 
-`make build` compiles `nanvil` and `ncast` into `./bin/` and syncs documentation into the explorer binary.
+`make build` compiles `nanvil`, `ncast`, and `nsmith` into `./bin/` and syncs documentation into the explorer binary.
 
 ## Start a local node
 
 ```bash
+./nanvil start
+# or, if you built from source:
 ./bin/nanvil start
 ```
 
@@ -99,6 +116,20 @@ Fork mainnet or testnet at a specific block height:
 ```
 
 Details: [forking.md](forking.md).
+
+## Compile a contract with nsmith
+
+`nsmith` compiles Go, Python, C#, and Java Neo contracts to NEF + manifest. Go works out of the box; other languages need a one-time toolchain install.
+
+```bash
+# Go — no extra install
+./bin/nsmith compile integration/testcontracts/examples/go --out /tmp/example
+
+# All four languages
+./scripts/test-nsmith-examples.sh
+```
+
+Full guide: [nsmith.md](nsmith.md) · recipes: [examples.md](examples.md).
 
 ## Documentation in the browser
 
