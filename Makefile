@@ -1,4 +1,4 @@
-.PHONY: build nanvil ncast darwin windows test vet fmt deps clean sync-docs website
+.PHONY: build nanvil ncast nsmith darwin windows test vet fmt deps clean sync-docs website
 
 GO_VERSION ?= 1.25
 # gnark-crypto ships 160+ byte filenames; some $HOME filesystems cap NAME_MAX at 143.
@@ -9,6 +9,7 @@ export GOTOOLCHAIN ?= local
 GO_BUILD = CGO_ENABLED=0 go build -trimpath
 NANVIL_BIN = ./bin/nanvil$(shell GOMODCACHE=$(GOMODCACHE) GOTOOLCHAIN=$(GOTOOLCHAIN) go env GOEXE)
 NCAST_BIN = ./bin/ncast$(shell GOMODCACHE=$(GOMODCACHE) GOTOOLCHAIN=$(GOTOOLCHAIN) go env GOEXE)
+NSMITH_BIN = ./bin/nsmith$(shell GOMODCACHE=$(GOMODCACHE) GOTOOLCHAIN=$(GOTOOLCHAIN) go env GOEXE)
 EMBEDDED_DOCS = pkg/nanvil/explorer/embedded-docs
 
 sync-docs:
@@ -21,7 +22,7 @@ website:
 	@go run ./cmd/buildsite/
 	@touch website/dist/.nojekyll
 
-build: sync-docs nanvil ncast
+build: sync-docs nanvil ncast nsmith
 
 nanvil:
 	@echo "=> Building nanvil"
@@ -30,6 +31,10 @@ nanvil:
 ncast:
 	@echo "=> Building ncast"
 	@$(GO_BUILD) -o $(NCAST_BIN) ./cmd/ncast/
+
+nsmith:
+	@echo "=> Building nsmith"
+	@$(GO_BUILD) -o $(NSMITH_BIN) ./cmd/nsmith/
 
 darwin-amd64:
 	@echo "=> Building darwin/amd64"
@@ -55,13 +60,13 @@ deps:
 	@CGO_ENABLED=0 go mod tidy -v
 
 test: sync-docs
-	@go test ./pkg/nanvil/... ./integration/... -race -count=1 -timeout 120s
+	@go test ./pkg/nanvil/... ./pkg/nsmith/... ./integration/... -race -count=1 -timeout 120s
 
 vet:
-	@go vet ./cmd/... ./pkg/nanvil/... ./pkg/ncast/... ./integration/...
+	@go vet ./cmd/... ./pkg/nanvil/... ./pkg/ncast/... ./pkg/nsmith/... ./integration/...
 
 fmt:
-	@gofmt -l -w -s $$(find ./cmd ./pkg/nanvil ./pkg/ncast ./integration -type f -name '*.go')
+	@gofmt -l -w -s $$(find ./cmd ./pkg/nanvil ./pkg/ncast ./pkg/nsmith ./integration -type f -name '*.go')
 
 clean:
 	@rm -rf bin/
