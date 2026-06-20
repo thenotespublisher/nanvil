@@ -27,7 +27,8 @@
     <nav class="landing-nav">
       <a href="index.html" class="active">Home</a>
       <a href="docs/index.html">Docs</a>
-      <a href="https://github.com/merl111/nanvil" class="btn-github" target="_blank" rel="noopener noreferrer">GitHub</a>
+      <a href="https://github.com/merl111/nanvil/releases" class="btn-github" target="_blank" rel="noopener noreferrer">Releases</a>
+      <a href="https://github.com/merl111/nanvil" target="_blank" rel="noopener noreferrer">GitHub</a>
       <div class="theme-switcher" role="group" aria-label="Theme">
         <button type="button" class="theme-option" data-theme="light" aria-pressed="false" title="Light theme">
           <span class="theme-option-icon" aria-hidden="true">☀</span>
@@ -51,21 +52,35 @@
         Spin up chains, prefund accounts, fork mainnet, cheat time — with a built-in block explorer.
       </p>
       <div class="hero-actions">
-        <a href="docs/getting-started.html" class="btn btn-primary">Get started</a>
+        <a href="#download" class="btn btn-primary">Download latest release</a>
+        <a href="docs/getting-started.html" class="btn btn-secondary">Get started</a>
         <a href="docs/index.html" class="btn btn-secondary">Read the docs</a>
-        <a href="https://github.com/merl111/nanvil" class="btn btn-secondary" target="_blank" rel="noopener noreferrer">View on GitHub</a>
       </div>
-      <div class="hero-install">
-        <p class="hero-install-label">Quick start</p>
-        <pre><code>git clone https://github.com/merl111/nanvil.git
-cd nanvil && make build
-./bin/nanvil start</code></pre>
+
+      <div class="hero-release" id="download">
+        <div class="release-panel" id="release-panel">
+          <p class="hero-install-label">Latest release</p>
+          <p class="release-version" id="release-version">Loading…</p>
+          <p class="release-lead">Pre-built <code>nanvil</code>, <code>ncast</code>, and <code>nsmith</code> for Linux, macOS, and Windows.</p>
+          <div class="release-actions">
+            <a href="https://github.com/merl111/nanvil/releases/latest" class="btn btn-primary" id="release-primary">Download</a>
+            <a href="https://github.com/merl111/nanvil/releases" class="btn btn-secondary" id="release-all">All releases</a>
+          </div>
+          <pre class="release-install-cmd"><code id="release-install-cmd">curl -sSL … | tar xz
+./nanvil start</code></pre>
+          <p class="release-source" id="release-fallback">
+            Prefer to build yourself?
+            <a href="docs/getting-started.html#build-from-source">Build from source</a>
+            ·
+            <a href="https://github.com/merl111/nanvil/blob/main/CHANGELOG.md" target="_blank" rel="noopener noreferrer">Changelog</a>
+          </p>
+        </div>
       </div>
     </section>
 
     <section class="landing-section">
       <h2>Everything you need for Neo3 dev</h2>
-      <p class="section-lead">Local chain, dev RPC cheats, mainnet forks, and tooling — all in one binary.</p>
+      <p class="section-lead">Local chain, dev RPC cheats, mainnet forks, and tooling — all in one download.</p>
       <div class="features-grid">
         <article class="feature-card">
           <div class="feature-icon" aria-hidden="true">▣</div>
@@ -97,12 +112,17 @@ cd nanvil && make build
           <h3>ncast CLI</h3>
           <p>Cast-style commands for balances, transfers, contract calls, and deploys against a running node.</p>
         </article>
+        <article class="feature-card">
+          <div class="feature-icon" aria-hidden="true">⚒</div>
+          <h3>nsmith compiler</h3>
+          <p>Compile Neo contracts in Go, Python, C#, or Java to NEF + manifest — included in every release.</p>
+        </article>
       </div>
     </section>
 
     <section class="landing-section">
       <h2>Default services</h2>
-      <p class="section-lead">After <code>./bin/nanvil start</code>, these endpoints are available locally.</p>
+      <p class="section-lead">After <code>./nanvil start</code>, these endpoints are available locally.</p>
       <div class="services-table-wrap">
         <table class="services-table">
           <thead>
@@ -135,11 +155,14 @@ cd nanvil && make build
     <span>·</span>
     <a href="docs/index.html">Documentation</a>
     <span>·</span>
+    <a href="https://github.com/merl111/nanvil/releases" target="_blank" rel="noopener noreferrer">Releases</a>
+    <span>·</span>
     <a href="https://github.com/merl111/nanvil" target="_blank" rel="noopener noreferrer">Source code</a>
     <span>·</span>
     <span>Apache 2.0</span>
   </footer>
 
   <script src="theme.js"></script>
+  <script src="releases.js"></script>
 </body>
 </html>

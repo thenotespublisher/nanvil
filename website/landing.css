@@ -93,6 +93,12 @@ code {
   border-color: var(--border-bright);
 }
 
+[data-theme="dark"] .release-panel,
+[data-theme="dark"] .release-install-cmd {
+  background: var(--surface2);
+  border-color: var(--border-bright);
+}
+
 [data-theme="dark"] .hero-install pre code {
   background: none;
   border: none;
@@ -286,6 +292,77 @@ code {
   max-width: 520px;
   margin: 0 auto;
   text-align: left;
+}
+
+.hero-release {
+  max-width: 640px;
+  margin: 0 auto;
+  text-align: left;
+}
+
+.release-panel {
+  background: var(--surface-solid);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.35rem 1.5rem;
+}
+
+.release-panel--fallback {
+  border-color: var(--border-bright);
+}
+
+.release-version {
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0 0 0.35rem;
+  color: var(--text);
+}
+
+.release-lead {
+  color: var(--muted);
+  font-size: 0.92rem;
+  margin: 0 0 1rem;
+  line-height: 1.5;
+}
+
+.release-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-bottom: 1rem;
+}
+
+.release-install-cmd {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.9rem 1rem;
+  overflow-x: auto;
+  font-family: var(--mono);
+  font-size: 0.84rem;
+  line-height: 1.5;
+  color: var(--text-soft);
+  margin: 0;
+}
+
+.release-install-cmd code {
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+  white-space: pre-wrap;
+}
+
+.release-source {
+  margin: 0.85rem 0 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.release-source a {
+  color: var(--accent);
+  font-weight: 500;
 }
 
 .hero-install-label {

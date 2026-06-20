@@ -23,6 +23,7 @@ var docNav = []struct {
 	{"getting-started", "Getting started"},
 	{"examples", "Examples"},
 	{"cli-reference", "CLI reference"},
+	{"nsmith", "nsmith compiler"},
 	{"rpc-reference", "RPC reference"},
 	{"explorer", "Block explorer"},
 	{"forking", "Forking"},
@@ -141,6 +142,7 @@ func main() {
 		filepath.Join(staticSrc, "favicon.png"):    filepath.Join(outDir, "favicon.png"),
 		filepath.Join(websiteSrc, "index.html"):    filepath.Join(outDir, "index.html"),
 		filepath.Join(websiteSrc, "landing.css"):   filepath.Join(outDir, "landing.css"),
+		filepath.Join(websiteSrc, "releases.js"):  filepath.Join(outDir, "releases.js"),
 	}
 	for src, dst := range copyFiles {
 		if err := copyFile(src, dst); err != nil {
