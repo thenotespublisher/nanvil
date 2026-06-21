@@ -443,6 +443,148 @@ code {
   margin: 0;
 }
 
+.landing-section--compact {
+  padding-top: 1.5rem;
+  padding-bottom: 1.5rem;
+}
+
+.tool-section {
+  scroll-margin-top: 5rem;
+}
+
+.tool-section--alt .tool-layout {
+  direction: rtl;
+}
+
+.tool-section--alt .tool-layout > * {
+  direction: ltr;
+}
+
+.tool-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 2rem;
+  align-items: start;
+}
+
+.tool-copy h2 {
+  font-size: clamp(1.75rem, 4vw, 2.25rem);
+  letter-spacing: -0.03em;
+  margin: 0 0 0.75rem;
+  text-align: left;
+}
+
+.tool-eyebrow {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--neo);
+  font-weight: 600;
+  margin: 0 0 0.35rem;
+}
+
+.tool-lead {
+  color: var(--text-soft);
+  font-size: 1rem;
+  line-height: 1.6;
+  margin: 0 0 1.25rem;
+}
+
+.tool-lead strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.tool-features {
+  margin: 0 0 1.35rem;
+  padding-left: 1.15rem;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.65;
+}
+
+.tool-features li + li {
+  margin-top: 0.35rem;
+}
+
+.tool-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.tool-demo {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem 1.35rem;
+}
+
+.tool-code {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 1rem 1.1rem;
+  overflow-x: auto;
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: var(--text-soft);
+  margin: 0;
+}
+
+.tool-code code {
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+  white-space: pre;
+}
+
+.stack-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.stack-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem 1.35rem;
+  text-align: center;
+}
+
+.stack-card h3 {
+  font-size: 1.15rem;
+  margin: 0 0 0.25rem;
+  font-family: var(--mono);
+}
+
+.stack-analogy {
+  color: var(--neo);
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin: 0 0 0.65rem;
+}
+
+.stack-card p:last-child {
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+[data-theme="dark"] .tool-demo,
+[data-theme="dark"] .stack-card {
+  background: var(--surface-solid);
+}
+
+[data-theme="dark"] .tool-code {
+  background: var(--surface2);
+  border-color: var(--border-bright);
+}
+
 .services-table-wrap {
   overflow-x: auto;
   border: 1px solid var(--border);
@@ -513,5 +655,15 @@ code {
 
   .landing-hero {
     padding-top: 2.5rem;
+  }
+
+  .tool-layout,
+  .tool-layout--reverse {
+    grid-template-columns: 1fr;
+    direction: ltr;
+  }
+
+  .stack-grid {
+    grid-template-columns: 1fr;
   }
 }
