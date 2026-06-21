@@ -112,99 +112,116 @@
       </div>
     </section>
 
-    <section class="landing-section tool-section" id="ncast">
-      <div class="tool-layout">
-        <div class="tool-copy">
-          <p class="tool-eyebrow">Cast-style CLI</p>
-          <h2>ncast</h2>
-          <p class="tool-lead">
-            Talk to a running node over JSON-RPC — send GAS, call contracts, deploy NEF files,
-            inspect blocks, and stream live events. The Foundry <strong>cast</strong> equivalent for Neo3.
-          </p>
-          <ul class="tool-features">
-            <li>Balances, transfers, and NEP-17 <code>send</code></li>
-            <li>Read-only and signed contract invocations</li>
-            <li>Deploy with <code>--nef</code> and <code>--manifest</code></li>
-            <li>Raw RPC, mempool, and WebSocket <code>watch</code></li>
-          </ul>
-          <div class="tool-actions">
-            <a href="docs/cli-reference.html#ncast" class="btn btn-secondary">CLI reference</a>
-            <a href="docs/examples.html" class="btn btn-secondary">Examples</a>
+    <section class="toolkit-section">
+      <div class="toolkit-intro">
+        <p class="toolkit-eyebrow">Included in every release</p>
+        <h2>The Neo3 toolkit</h2>
+        <p class="section-lead">
+          Three CLIs modeled after Foundry — run a node, talk to RPC, compile contracts.
+        </p>
+        <div class="toolkit-trio" aria-hidden="true">
+          <span class="toolkit-trio-item"><strong>nanvil</strong> node</span>
+          <span class="toolkit-trio-sep">·</span>
+          <span class="toolkit-trio-item"><strong>ncast</strong> client</span>
+          <span class="toolkit-trio-sep">·</span>
+          <span class="toolkit-trio-item"><strong>nsmith</strong> compiler</span>
+        </div>
+      </div>
+
+      <article class="tool-showcase tool-showcase--ncast" id="ncast">
+        <div class="tool-showcase-grid">
+          <div class="tool-showcase-copy">
+            <div class="tool-meta">
+              <span class="tool-icon" aria-hidden="true">◈</span>
+              <div>
+                <span class="tool-kind">RPC client</span>
+                <span class="tool-foundry">like Foundry <em>cast</em></span>
+              </div>
+            </div>
+            <h3 class="tool-title">ncast</h3>
+            <p class="tool-desc">
+              Send GAS, invoke contracts, deploy NEF files, and inspect chain state against
+              any Neo JSON-RPC endpoint — usually your local <code>nanvil</code> node.
+            </p>
+            <ul class="tool-highlights">
+              <li>NEP-17 transfers and balance lookups</li>
+              <li>Signed deploys and contract calls</li>
+              <li>Raw RPC, mempool, and live <code>watch</code></li>
+            </ul>
+            <div class="tool-actions">
+              <a href="docs/cli-reference.html#ncast" class="btn btn-primary">CLI reference</a>
+              <a href="docs/examples.html" class="btn btn-secondary">Examples</a>
+            </div>
+          </div>
+          <div class="terminal terminal--accent">
+            <div class="terminal-chrome">
+              <span class="terminal-dot terminal-dot--red"></span>
+              <span class="terminal-dot terminal-dot--yellow"></span>
+              <span class="terminal-dot terminal-dot--green"></span>
+              <span class="terminal-label">ncast</span>
+            </div>
+            <pre class="terminal-body"><code><span class="t-dim">$</span> export NCAST_RPC=http://127.0.0.1:8545
+
+<span class="t-dim">$</span> ncast balance NRBs4Wc8vuFJY5sN7WvJNRzVduAeXQ8TQg
+<span class="t-out">10000 GAS</span>
+
+<span class="t-dim">$</span> ncast send --wif &lt;wif&gt; &lt;to&gt; 1
+<span class="t-dim">$</span> ncast call gas decimals
+<span class="t-out">8</span>
+
+<span class="t-dim">$</span> ncast deploy --wif &lt;wif&gt; \
+    --nef contract.nef \
+    --manifest contract.manifest.json</code></pre>
           </div>
         </div>
-        <div class="tool-demo">
-          <p class="hero-install-label">Quick commands</p>
-          <pre class="tool-code"><code>export NCAST_RPC=http://127.0.0.1:8545
+      </article>
 
-ncast balance &lt;address&gt;
-ncast send --wif &lt;wif&gt; &lt;to&gt; 1
-ncast call gas decimals
+      <article class="tool-showcase tool-showcase--nsmith" id="nsmith">
+        <div class="tool-showcase-grid tool-showcase-grid--reverse">
+          <div class="tool-showcase-copy">
+            <div class="tool-meta">
+              <span class="tool-icon tool-icon--forge" aria-hidden="true">⚒</span>
+              <div>
+                <span class="tool-kind">Compiler suite</span>
+                <span class="tool-foundry">like Foundry <em>forge</em></span>
+              </div>
+            </div>
+            <h3 class="tool-title">nsmith</h3>
+            <p class="tool-desc">
+              Compile smart contracts in Go, Python, C#, or Java to
+              <code>.nef</code> + <code>.manifest.json</code> — then deploy with
+              <code>ncast</code>.
+            </p>
+            <div class="lang-grid">
+              <div class="lang-chip"><span class="lang-name">Go</span><span class="lang-note">built-in</span></div>
+              <div class="lang-chip"><span class="lang-name">Python</span><span class="lang-note">neo3-boa</span></div>
+              <div class="lang-chip"><span class="lang-name">C#</span><span class="lang-note">nccs</span></div>
+              <div class="lang-chip"><span class="lang-name">Java</span><span class="lang-note">neow3j</span></div>
+            </div>
+            <div class="tool-actions">
+              <a href="docs/nsmith.html" class="btn btn-primary">nsmith guide</a>
+              <a href="docs/examples.html" class="btn btn-secondary">Compile examples</a>
+            </div>
+          </div>
+          <div class="terminal terminal--neo">
+            <div class="terminal-chrome">
+              <span class="terminal-dot terminal-dot--red"></span>
+              <span class="terminal-dot terminal-dot--yellow"></span>
+              <span class="terminal-dot terminal-dot--green"></span>
+              <span class="terminal-label">nsmith</span>
+            </div>
+            <pre class="terminal-body"><code><span class="t-dim">$</span> nsmith compile --lang go ./main.go --out contract
+<span class="t-out">language: go
+nef:      contract.nef</span>
 
-ncast deploy --wif &lt;wif&gt; \
-  --nef contract.nef \
-  --manifest contract.manifest.json
+<span class="t-dim">$</span> nsmith install --lang python
+<span class="t-dim">$</span> nsmith compile --lang python ./contract.py
 
-ncast watch</code></pre>
-        </div>
-      </div>
-    </section>
-
-    <section class="landing-section tool-section tool-section--alt" id="nsmith">
-      <div class="tool-layout tool-layout--reverse">
-        <div class="tool-copy">
-          <p class="tool-eyebrow">Multi-language compiler</p>
-          <h2>nsmith</h2>
-          <p class="tool-lead">
-            Compile Neo N3 smart contracts to <code>.nef</code> and <code>.manifest.json</code>
-            artifacts ready for <code>ncast deploy</code>. The Foundry <strong>forge</strong> equivalent —
-            one CLI for Go, Python, C#, and Java.
-          </p>
-          <ul class="tool-features">
-            <li><strong>Go</strong> — embedded neo-go compiler, no extra install</li>
-            <li><strong>Python</strong> — neo3-boa via managed toolchain</li>
-            <li><strong>C#</strong> — Neo.Compiler.CSharp (<code>nccs</code>)</li>
-            <li><strong>Java</strong> — neow3j Gradle plugin</li>
-          </ul>
-          <div class="tool-actions">
-            <a href="docs/nsmith.html" class="btn btn-secondary">nsmith guide</a>
-            <a href="docs/examples.html" class="btn btn-secondary">Compile examples</a>
+<span class="t-dim">$</span> nsmith init MyToken --lang go
+<span class="t-dim">$</span> nsmith doctor --all</code></pre>
           </div>
         </div>
-        <div class="tool-demo">
-          <p class="hero-install-label">Quick commands</p>
-          <pre class="tool-code"><code># Go — works out of the box
-nsmith compile --lang go ./main.go --out contract
-
-# Python / C# / Java — install toolchains once
-nsmith install --lang python,csharp
-nsmith compile --lang python ./contract.py
-
-nsmith init MyToken --lang go
-nsmith doctor --all</code></pre>
-        </div>
-      </div>
-    </section>
-
-    <section class="landing-section landing-section--compact">
-      <h2>The Nanvil stack</h2>
-      <p class="section-lead">Three binaries, one release — modeled after Foundry’s Anvil, Cast, and Forge.</p>
-      <div class="stack-grid">
-        <article class="stack-card">
-          <h3>nanvil</h3>
-          <p class="stack-analogy">↔ Anvil</p>
-          <p>Local Neo3 node with prefunded accounts, forks, and dev RPC cheats.</p>
-        </article>
-        <article class="stack-card">
-          <h3>ncast</h3>
-          <p class="stack-analogy">↔ Cast</p>
-          <p>RPC client for transactions, calls, deploys, and chain inspection.</p>
-        </article>
-        <article class="stack-card">
-          <h3>nsmith</h3>
-          <p class="stack-analogy">↔ Forge</p>
-          <p>Multi-language contract compiler producing NEF + manifest artifacts.</p>
-        </article>
-      </div>
+      </article>
     </section>
 
     <section class="landing-section">
